@@ -4,10 +4,10 @@ import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
-import read_input.{read_input_for}
+import util
 
 pub fn run() {
-  let input = read_input_for(day: 1)
+  let input = util.read_input_for(day: 1)
   let #(list_1, list_2) = parse_input(input)
   part_1(list_1, list_2)
   part_2(list_1, list_2)
@@ -45,13 +45,8 @@ fn parse_input(input: String) -> #(List(Int), List(Int)) {
   |> string.split("\n")
   |> list.fold(from: #([], []), with: fn(acc, line) {
     let assert [a, b] = string.split(line, "   ")
-    #([parse_int(a), ..acc.0], [parse_int(b), ..acc.1])
+    #([util.parse_int(a), ..acc.0], [util.parse_int(b), ..acc.1])
   })
-}
-
-fn parse_int(str: String) -> Int {
-  let assert Ok(res) = int.parse(str)
-  res
 }
 
 fn calc_distance(list_1: List(Int), list_2: List(Int), total: Int) -> Int {
