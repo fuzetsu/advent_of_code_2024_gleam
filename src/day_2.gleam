@@ -10,10 +10,9 @@ type Levels =
 type Reports =
   List(Levels)
 
-type State {
-  Danger
-  Decreasing
+type Direction {
   Increasing
+  Decreasing
 }
 
 pub fn run() {
@@ -27,38 +26,32 @@ fn part_1(reports: Reports) {
   let safe_count =
     reports
     |> list.fold(from: 0, with: fn(safe_count, levels) {
-      let state = case levels {
-        [a, b, ..rest] if a < b -> is_increasing(a, [b, ..rest])
-        [a, b, ..rest] if a > b -> is_decreasing(a, [b, ..rest])
-        _ -> Danger
+      let is_safe = case levels {
+        [a, b, ..rest] if a < b -> check_levels(Increasing, a, [b, ..rest])
+        [a, b, ..rest] if a > b -> check_levels(Decreasing, a, [b, ..rest])
+        _ -> False
       }
-      case state {
-        Increasing | Decreasing -> safe_count + 1
-        _ -> safe_count
+      case is_safe {
+        True -> safe_count + 1
+        False -> safe_count
       }
     })
   io.println("safe_count == " <> int.to_string(safe_count))
 }
 
-fn is_increasing(prev: Int, levels: Levels) -> State {
+fn check_levels(direction: Direction, prev: Int, levels: Levels) -> Bool {
   case levels {
-    [next, ..rest] ->
-      case next - prev {
-        diff if diff >= 1 && diff <= 3 -> is_increasing(next, rest)
-        _ -> Danger
+    [next, ..rest] -> {
+      let diff = case direction {
+        Increasing -> next - prev
+        Decreasing -> prev - next
       }
-    _ -> Increasing
-  }
-}
-
-fn is_decreasing(prev: Int, levels: Levels) -> State {
-  case levels {
-    [next, ..rest] ->
-      case prev - next {
-        diff if diff > 0 && diff <= 3 -> is_decreasing(next, rest)
-        _ -> Danger
+      case diff {
+        _ if diff >= 1 && diff <= 3 -> check_levels(direction, next, rest)
+        _ -> False
       }
-    _ -> Decreasing
+    }
+    _ -> True
   }
 }
 
