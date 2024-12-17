@@ -1,6 +1,7 @@
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import util
 
@@ -37,22 +38,7 @@ fn part_2(reports: Reports) {
 fn get_safe_count(reports: Reports, error_tolerance: Bool) -> Int {
   reports
   |> list.fold(from: 0, with: fn(safe_count, levels) {
-    let is_safe = case levels {
-      [a, b, ..rest] if a < b ->
-        check_levels(Increasing, a, error_tolerance, [b, ..rest])
-      [a, b, ..rest] if a > b ->
-        check_levels(Decreasing, a, error_tolerance, [b, ..rest])
-      [a, b, ..rest] if error_tolerance && a == b ->
-        case rest {
-          [c, ..rest] if b < c ->
-            check_levels(Increasing, b, False, [c, ..rest])
-          [c, ..rest] if c > b ->
-            check_levels(Decreasing, b, False, [c, ..rest])
-          _ -> False
-        }
-      _ -> False
-    }
-    case is_safe {
+    case check_levels(None, None, error_tolerance, levels) {
       True -> safe_count + 1
       False -> safe_count
     }
@@ -60,32 +46,46 @@ fn get_safe_count(reports: Reports, error_tolerance: Bool) -> Int {
 }
 
 fn check_levels(
-  direction: Direction,
-  prev: Int,
+  direction: Option(Direction),
+  prev: Option(Int),
   error_tolerance: Bool,
   levels: Levels,
 ) -> Bool {
-  case levels {
-    [next, ..rest] -> {
-      let diff = case direction {
-        Increasing -> next - prev
-        Decreasing -> prev - next
+  case direction, prev {
+    None, None ->
+      case levels {
+        [a, b, ..rest] if a < b ->
+          check_levels(Some(Increasing), Some(a), error_tolerance, [b, ..rest])
+        [a, b, ..rest] if a > b ->
+          check_levels(Some(Decreasing), Some(a), error_tolerance, [b, ..rest])
+        [_, ..rest] if error_tolerance -> check_levels(None, None, False, rest)
+        _ -> False
       }
-      case diff {
-        _ if diff >= 1 && diff <= 3 ->
-          check_levels(direction, next, error_tolerance, rest)
-        _ ->
-          case error_tolerance {
-            True ->
-              case check_levels(direction, prev, False, rest) {
-                True -> True
-                False -> check_levels(direction, next, False, rest)
-              }
-            False -> False
+    Some(dir), Some(prev) -> {
+      case levels {
+        [next, ..rest] -> {
+          let diff = case dir {
+            Increasing -> next - prev
+            Decreasing -> prev - next
           }
+          case diff {
+            _ if diff >= 1 && diff <= 3 ->
+              check_levels(direction, Some(next), error_tolerance, rest)
+            _ ->
+              case error_tolerance {
+                True ->
+                  case check_levels(direction, Some(prev), False, rest) {
+                    True -> True
+                    False -> check_levels(direction, Some(next), False, rest)
+                  }
+                False -> False
+              }
+          }
+        }
+        _ -> True
       }
     }
-    _ -> True
+    _, _ -> False
   }
 }
 
