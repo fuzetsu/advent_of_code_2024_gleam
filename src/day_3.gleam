@@ -38,9 +38,8 @@ fn part_1(input: String) {
             False -> start_ins
           }
 
-        Mul(")", Some(num1), Some(num2)), ")" -> {
+        Mul(")", Some(num1), Some(num2)), ")" ->
           Result(util.parse_int(num1) * util.parse_int(num2))
-        }
         Mul(")", Some(num1), num2), _ ->
           case is_digit(char) {
             True -> Mul(")", Some(num1), Some(append(num2, char)))
@@ -56,7 +55,7 @@ fn part_1(input: String) {
       }
     })
 
-  io.println("Mul result is " <> int.to_string(total))
+  io.println("Sum of all mul(x, y) is " <> int.to_string(total))
 }
 
 fn append(start: Option(String), add: String) -> String {
