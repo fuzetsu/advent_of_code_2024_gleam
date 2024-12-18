@@ -1,8 +1,9 @@
 import gleam/int
 import gleam/io
-import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/list.{Continue, Stop}
+import gleam/option.{None, Some}
 import gleam/string
+import gleam/yielder.{type Yielder}
 import util
 
 type Levels =
@@ -38,54 +39,63 @@ fn part_2(reports: Reports) {
 fn get_safe_count(reports: Reports, error_tolerance: Bool) -> Int {
   reports
   |> list.fold(from: 0, with: fn(safe_count, levels) {
-    case check_levels(None, None, error_tolerance, levels) {
+    let levels = yielder.from_list(levels)
+
+    let is_safe = case error_tolerance {
+      True -> {
+        let levels = yielder.index(levels)
+
+        yielder.fold_until(levels, False, fn(_, level) {
+          let #(_, skip_index) = level
+
+          let is_safe =
+            levels
+            |> yielder.filter(fn(item) { item.1 != skip_index })
+            |> yielder.map(fn(item) { item.0 })
+            |> are_levels_safe
+
+          case is_safe {
+            True -> Stop(True)
+            False -> Continue(False)
+          }
+        })
+      }
+      False -> are_levels_safe(levels)
+    }
+
+    case is_safe {
       True -> safe_count + 1
       False -> safe_count
     }
   })
 }
 
-fn check_levels(
-  direction: Option(Direction),
-  prev: Option(Int),
-  error_tolerance: Bool,
-  levels: Levels,
-) -> Bool {
-  case direction, prev {
-    None, None ->
-      case levels {
-        [a, b, ..rest] if a < b ->
-          check_levels(Some(Increasing), Some(a), error_tolerance, [b, ..rest])
-        [a, b, ..rest] if a > b ->
-          check_levels(Some(Decreasing), Some(a), error_tolerance, [b, ..rest])
-        [_, ..rest] if error_tolerance -> check_levels(None, None, False, rest)
-        _ -> False
-      }
-    Some(dir), Some(prev) -> {
-      case levels {
-        [next, ..rest] -> {
-          let diff = case dir {
-            Increasing -> next - prev
-            Decreasing -> prev - next
+fn are_levels_safe(levels: Yielder(Int)) -> Bool {
+  let result =
+    levels
+    |> yielder.try_fold(#(None, None), fn(acc, level) {
+      case acc, level {
+        #(None, None), level -> Ok(#(Some(level), None))
+
+        #(Some(prev), dir), level if level > prev && level - prev <= 3 ->
+          case dir {
+            None | Some(Increasing) -> Ok(#(Some(level), Some(Increasing)))
+            _ -> Error(Nil)
           }
-          case diff {
-            _ if diff >= 1 && diff <= 3 ->
-              check_levels(direction, Some(next), error_tolerance, rest)
-            _ ->
-              case error_tolerance {
-                True ->
-                  case check_levels(direction, Some(prev), False, rest) {
-                    True -> True
-                    False -> check_levels(direction, Some(next), False, rest)
-                  }
-                False -> False
-              }
+
+        #(Some(prev), dir), level if level < prev && prev - level <= 3 ->
+          case dir {
+            None | Some(Decreasing) -> Ok(#(Some(level), Some(Decreasing)))
+            _ -> Error(Nil)
           }
-        }
-        _ -> True
+
+        _, _ -> Error(Nil)
       }
-    }
-    _, _ -> False
+    })
+
+  case result {
+    Ok(_) -> True
+    Error(_) -> False
   }
 }
 
