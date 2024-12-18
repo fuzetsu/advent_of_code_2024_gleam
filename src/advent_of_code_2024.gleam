@@ -1,5 +1,6 @@
 import day_1
 import day_2
+import day_3
 import gleam/io
 
 pub fn main() {
@@ -7,4 +8,5 @@ pub fn main() {
 
   day_1.run()
   day_2.run()
+  day_3.run()
 }
