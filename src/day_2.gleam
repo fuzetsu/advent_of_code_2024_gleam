@@ -1,7 +1,8 @@
 import gleam/int
 import gleam/io
-import gleam/list.{Continue, Stop}
+import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import gleam/yielder.{type Yielder}
 import util
@@ -45,19 +46,12 @@ fn get_safe_count(reports: Reports, error_tolerance: Bool) -> Int {
       True -> {
         let levels = yielder.index(levels)
 
-        yielder.fold_until(levels, False, fn(_, level) {
-          let #(_, skip_index) = level
-
-          let is_safe =
-            levels
-            |> yielder.filter(fn(item) { item.1 != skip_index })
-            |> yielder.map(fn(item) { item.0 })
-            |> are_levels_safe
-
-          case is_safe {
-            True -> Stop(True)
-            False -> Continue(False)
-          }
+        levels
+        |> yielder.any(fn(skip) {
+          levels
+          |> yielder.filter(fn(item) { item.1 != skip.1 })
+          |> yielder.map(fn(item) { item.0 })
+          |> are_levels_safe
         })
       }
       False -> are_levels_safe(levels)
@@ -71,32 +65,27 @@ fn get_safe_count(reports: Reports, error_tolerance: Bool) -> Int {
 }
 
 fn are_levels_safe(levels: Yielder(Int)) -> Bool {
-  let result =
-    levels
-    |> yielder.try_fold(#(None, None), fn(acc, level) {
-      case acc, level {
-        #(None, None), level -> Ok(#(Some(level), None))
+  levels
+  |> yielder.try_fold(#(None, None), fn(acc, level) {
+    case acc, level {
+      #(None, None), level -> Ok(#(Some(level), None))
 
-        #(Some(prev), dir), level if level > prev && level - prev <= 3 ->
-          case dir {
-            None | Some(Increasing) -> Ok(#(Some(level), Some(Increasing)))
-            _ -> Error(Nil)
-          }
+      #(Some(prev), dir), level if level > prev && level - prev <= 3 ->
+        case dir {
+          None | Some(Increasing) -> Ok(#(Some(level), Some(Increasing)))
+          _ -> Error(Nil)
+        }
 
-        #(Some(prev), dir), level if level < prev && prev - level <= 3 ->
-          case dir {
-            None | Some(Decreasing) -> Ok(#(Some(level), Some(Decreasing)))
-            _ -> Error(Nil)
-          }
+      #(Some(prev), dir), level if level < prev && prev - level <= 3 ->
+        case dir {
+          None | Some(Decreasing) -> Ok(#(Some(level), Some(Decreasing)))
+          _ -> Error(Nil)
+        }
 
-        _, _ -> Error(Nil)
-      }
-    })
-
-  case result {
-    Ok(_) -> True
-    Error(_) -> False
-  }
+      _, _ -> Error(Nil)
+    }
+  })
+  |> result.is_ok
 }
 
 fn parse_input(input: String) -> Reports {
