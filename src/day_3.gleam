@@ -69,46 +69,7 @@ fn part_2(chars: List(String)) {
     chars
     |> list.fold(#(0, Enabled), fn(acc, char) {
       let #(total, ins) = acc
-      let next_ins = case ins, char {
-        Disabled, "d" -> Do("o")
-        Disabled, _ -> Disabled
-
-        Do("o"), "o" -> Do("(")
-        Do("("), "(" -> Do(")")
-        Do(")"), ")" -> Enabled
-        Do(_), _ -> Disabled
-
-        Enabled, "d" | Mul(_, _, _), "d" -> Dont("o")
-        Dont("o"), "o" -> Dont("n")
-        Dont("n"), "n" -> Dont("'")
-        Dont("'"), "'" -> Dont("t")
-        Dont("t"), "t" -> Dont("(")
-        Dont("("), "(" -> Dont(")")
-        Dont(")"), ")" -> Disabled
-
-        Enabled, "m" | Dont(_), "m" -> Mul("u", None, None)
-        Mul("u", None, None), "u" -> Mul("l", None, None)
-        Mul("l", None, None), "l" -> Mul("(", None, None)
-        Mul("(", None, None), "(" -> Mul(",", None, None)
-
-        Mul(",", Some(num1), None), "," -> Mul(")", Some(num1), None)
-        Mul(",", num1, None), _ ->
-          case is_digit(char) {
-            True -> Mul(",", Some(append(num1, char)), None)
-            False -> Enabled
-          }
-
-        Mul(")", Some(num1), Some(num2)), ")" ->
-          Result(util.parse_int(num1) * util.parse_int(num2))
-        Mul(")", Some(num1), num2), _ ->
-          case is_digit(char) {
-            True -> Mul(")", Some(num1), Some(append(num2, char)))
-            False -> Enabled
-          }
-
-        _, _ -> Enabled
-      }
-
+      let next_ins = process_ins(ins, char)
       case next_ins {
         Result(x) -> #(total + x, start_ins)
         _ -> #(total, next_ins)
@@ -116,6 +77,51 @@ fn part_2(chars: List(String)) {
     })
 
   io.println("Sum of all enabled mul(x, y) is " <> int.to_string(total))
+}
+
+fn process_ins(ins: Ins, char: String) -> Ins {
+  case ins, char {
+    Disabled, "d" -> Do("o")
+    Disabled, _ -> Disabled
+
+    Do("o"), "o" -> Do("(")
+    Do("("), "(" -> Do(")")
+    Do(")"), ")" -> Enabled
+    Do(_), _ -> process_ins(Disabled, char)
+
+    Enabled, "d" -> Dont("o")
+    Dont("o"), "o" -> Dont("n")
+    Dont("n"), "n" -> Dont("'")
+    Dont("'"), "'" -> Dont("t")
+    Dont("t"), "t" -> Dont("(")
+    Dont("("), "(" -> Dont(")")
+    Dont(")"), ")" -> Disabled
+    Dont(_), _ -> process_ins(Enabled, char)
+
+    Enabled, "m" -> Mul("u", None, None)
+    Mul("u", None, None), "u" -> Mul("l", None, None)
+    Mul("l", None, None), "l" -> Mul("(", None, None)
+    Mul("(", None, None), "(" -> Mul(",", None, None)
+
+    Mul(",", Some(num1), None), "," -> Mul(")", Some(num1), None)
+    Mul(",", num1, None), _ ->
+      case is_digit(char) {
+        True -> Mul(",", Some(append(num1, char)), None)
+        False -> process_ins(Enabled, char)
+      }
+
+    Mul(")", Some(num1), Some(num2)), ")" ->
+      Result(util.parse_int(num1) * util.parse_int(num2))
+    Mul(")", Some(num1), num2), _ ->
+      case is_digit(char) {
+        True -> Mul(")", Some(num1), Some(append(num2, char)))
+        False -> process_ins(Enabled, char)
+      }
+
+    Mul(_, _, _), _ -> process_ins(Enabled, char)
+
+    _, _ -> Enabled
+  }
 }
 
 fn append(start: Option(String), add: String) -> String {
