@@ -30,34 +30,29 @@ pub fn run() {
 
 fn part_1(chars: List(String)) {
   io.println("Day 3 part 1:")
-  let #(total, _) =
-    chars
-    |> list.fold(#(0, Enabled), fn(acc, char) {
-      let #(total, ins) = acc
-      let next_ins = process_ins(ins, char, False)
-      case next_ins {
-        Product(x) -> #(total + x, Enabled)
-        _ -> #(total, next_ins)
-      }
-    })
-
+  let total = calculate_sum(chars, False)
   io.println("Sum of all mul(x, y) is " <> int.to_string(total))
 }
 
 fn part_2(chars: List(String)) {
   io.println("Day 3 part 2:")
+  let total = calculate_sum(chars, True)
+  io.println("Sum of all enabled mul(x, y) is " <> int.to_string(total))
+}
+
+fn calculate_sum(chars: List(String), check_dos: Bool) -> Int {
   let #(total, _) =
     chars
     |> list.fold(#(0, Enabled), fn(acc, char) {
       let #(total, ins) = acc
-      let next_ins = process_ins(ins, char, True)
+      let next_ins = process_ins(ins, char, check_dos)
       case next_ins {
         Product(x) -> #(total + x, Enabled)
         _ -> #(total, next_ins)
       }
     })
 
-  io.println("Sum of all enabled mul(x, y) is " <> int.to_string(total))
+  total
 }
 
 fn process_ins(ins: Ins, char: String, check_dos: Bool) -> Ins {
