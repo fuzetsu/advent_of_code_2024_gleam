@@ -6,12 +6,12 @@ import gleam/result
 import gleam/string
 import util
 
-type Ins {
+type Instruction {
   Enabled
   Disabled
   Do(next: List(String))
   Dont(next: List(String))
-  Mul(next: List(String), num1: Option(String), num2: Option(String))
+  Mul(next: List(String), x: Option(String), y: Option(String))
   Product(total: Int)
 }
 
@@ -45,7 +45,7 @@ fn calculate_sum(chars: List(String), check_dos: Bool) -> Int {
     chars
     |> list.fold(#(0, Enabled), fn(acc, char) {
       let #(total, ins) = acc
-      let next_ins = process_ins(ins, char, check_dos)
+      let next_ins = handle_char(ins, char, check_dos)
       case next_ins {
         Product(x) -> #(total + x, Enabled)
         _ -> #(total, next_ins)
@@ -55,35 +55,35 @@ fn calculate_sum(chars: List(String), check_dos: Bool) -> Int {
   total
 }
 
-fn process_ins(ins: Ins, char: String, check_dos: Bool) -> Ins {
+fn handle_char(ins: Instruction, char: String, check_dos: Bool) -> Instruction {
   case ins, char {
     Disabled, "d" if check_dos -> Do(do_chars)
     Disabled, _ -> Disabled
     Do([")"]), ")" -> Enabled
     Do([x, ..rest]), _ if char == x -> Do(rest)
-    Do(_), _ -> process_ins(Disabled, char, check_dos)
+    Do(_), _ -> handle_char(Disabled, char, check_dos)
 
     Enabled, "d" if check_dos -> Dont(dont_chars)
     Dont([")"]), ")" -> Disabled
     Dont([x, ..rest]), _ if char == x -> Dont(rest)
-    Dont(_), _ -> process_ins(Enabled, char, check_dos)
+    Dont(_), _ -> handle_char(Enabled, char, check_dos)
 
     Enabled, "m" -> Mul(mul_chars, None, None)
-    Mul([",", ..rest], Some(num1), None), "," -> Mul(rest, Some(num1), None)
-    Mul([",", ..] as next, num1, None), _ ->
+    Mul([",", ..rest], Some(x), None), "," -> Mul(rest, Some(x), None)
+    Mul([",", ..] as next, x, None), _ ->
       case is_digit(char) {
-        True -> Mul(next, Some(append(num1, char)), None)
-        False -> process_ins(Enabled, char, check_dos)
+        True -> Mul(next, Some(append(x, char)), None)
+        False -> handle_char(Enabled, char, check_dos)
       }
-    Mul([")"], Some(num1), Some(num2)), ")" ->
-      Product(util.parse_int(num1) * util.parse_int(num2))
-    Mul([")"], Some(num1), num2), _ ->
+    Mul([")"], Some(x), Some(y)), ")" ->
+      Product(util.parse_int(x) * util.parse_int(y))
+    Mul([")"], Some(x), y), _ ->
       case is_digit(char) {
-        True -> Mul([")"], Some(num1), Some(append(num2, char)))
-        False -> process_ins(Enabled, char, check_dos)
+        True -> Mul([")"], Some(x), Some(append(y, char)))
+        False -> handle_char(Enabled, char, check_dos)
       }
     Mul([next, ..rest], None, None), _ if char == next -> Mul(rest, None, None)
-    Mul(_, _, _), _ -> process_ins(Enabled, char, check_dos)
+    Mul(_, _, _), _ -> handle_char(Enabled, char, check_dos)
 
     _, _ -> Enabled
   }
